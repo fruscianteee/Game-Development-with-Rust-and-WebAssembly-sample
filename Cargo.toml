@@ -47,6 +47,7 @@ features = [
     "HtmlImageElement",
     "Response",
     "Performance",
+    "KeyboardEvent",
 ]
 
 # These crates are used for running unit tests.
