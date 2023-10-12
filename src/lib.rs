@@ -6,8 +6,8 @@ mod game;
 use engine::GameLoop;
 use game::WalkTheDog;
 use serde::Deserialize;
-use std::{collections::HashMap, rc::Rc, sync::Mutex};
-use wasm_bindgen::{prelude::*, JsCast};
+use std::collections::HashMap;
+use wasm_bindgen::prelude::*;
 
 // This is like the `main` function, except for JavaScript.
 #[wasm_bindgen(start)]
