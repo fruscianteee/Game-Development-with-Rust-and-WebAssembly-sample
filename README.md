@@ -1,3 +1,7 @@
+## URL
+
+<https://github.com/PacktPublishing/Game-Development-with-Rust-and-WebAssembly>
+
 ## How to install
 
 ```sh

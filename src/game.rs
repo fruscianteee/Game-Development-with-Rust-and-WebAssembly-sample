@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use self::red_hat_boy_states::*;
 use crate::{
@@ -53,6 +53,7 @@ impl Game for WalkTheDog {
         } else {
             self.frame = 0;
         }
+        self.rhb.as_mut().unwrap().update();
     }
     fn draw(&self, renderer: &Renderer) {
         let current_sprite = (self.frame / 3) + 1;
@@ -86,6 +87,8 @@ impl Game for WalkTheDog {
                 },
             );
         }
+
+        self.rhb.as_ref().unwrap().draw(renderer);
     }
 }
 
@@ -143,6 +146,32 @@ impl RedHatBoyStateMachine {
             _ => self,
         }
     }
+    fn frame_name(&self) -> &str {
+        match self {
+            RedHatBoyStateMachine::Idle(state) => state.frame_name(),
+            RedHatBoyStateMachine::Running(state) => state.frame_name(),
+        }
+    }
+
+    fn context(&self) -> &RedHatBoyContext {
+        match self {
+            RedHatBoyStateMachine::Idle(state) => state.context(),
+            RedHatBoyStateMachine::Running(state) => state.context(),
+        }
+    }
+
+    fn update(self) -> Self {
+        match self {
+            RedHatBoyStateMachine::Idle(state) => {
+                state.context();
+                RedHatBoyStateMachine::Idle(state)
+            }
+            RedHatBoyStateMachine::Running(state) => {
+                state.context();
+                RedHatBoyStateMachine::Running(state)
+            }
+        }
+    }
 }
 
 impl From<RedHatBoyState<Running>> for RedHatBoyStateMachine {
@@ -164,12 +193,47 @@ impl RedHatBoy {
             image,
         }
     }
+    fn draw(&self, renderer: &Renderer) {
+        let frame_name = format!(
+            "{} ({}).png",
+            self.state_machine.frame_name(),
+            (self.state_machine.context().frame / 3) + 1
+        );
+
+        let sprite = self
+            .sprite_sheet
+            .frames
+            .get(&frame_name)
+            .expect("Cell not found");
+
+        renderer.draw_image(
+            &self.image,
+            &Rect {
+                x: sprite.frame.x.into(),
+                y: sprite.frame.y.into(),
+                width: sprite.frame.w.into(),
+                height: sprite.frame.h.into(),
+            },
+            &Rect {
+                x: self.state_machine.context().position.x.into(),
+                y: self.state_machine.context().position.y.into(),
+                width: sprite.frame.w.into(),
+                height: sprite.frame.h.into(),
+            },
+        )
+    }
+    fn update(&mut self) {
+        self.state_machine = self.state_machine.update();
+    }
 }
 
 mod red_hat_boy_states {
     use crate::engine::Point;
     const FLOOR: i16 = 475;
-
+    const IDLE_FRAME_NAME: &str = "Idle";
+    const RUN_FRAME_NAME: &str = "Run";
+    const IDLE_FRAMES: u8 = 29;
+    const RUNNING_FRAMES: u8 = 23;
     #[derive(Copy, Clone)]
     pub struct Idle;
 
@@ -178,15 +242,31 @@ mod red_hat_boy_states {
 
     #[derive(Copy, Clone)]
     pub struct RedHatBoyState<S> {
-        context: RedHatBoyContext,
-        _state: S,
+        pub context: RedHatBoyContext,
+        pub _state: S,
+    }
+    impl<S> RedHatBoyState<S> {
+        pub fn context(&self) -> &RedHatBoyContext {
+            &self.context
+        }
     }
 
     #[derive(Copy, Clone)]
     pub struct RedHatBoyContext {
-        frame: u8,
-        position: Point,
-        velocity: Point,
+        pub frame: u8,
+        pub position: Point,
+        pub velocity: Point,
+    }
+
+    impl RedHatBoyContext {
+        pub fn update(mut self, frame_count: u8) -> Self {
+            if self.frame < frame_count {
+                self.frame += 1;
+            } else {
+                self.frame = 0;
+            }
+            self
+        }
     }
 
     impl RedHatBoyState<Idle> {
@@ -206,6 +286,23 @@ mod red_hat_boy_states {
                 context: self.context,
                 _state: Running {},
             }
+        }
+
+        pub fn frame_name(&self) -> &str {
+            IDLE_FRAME_NAME
+        }
+
+        pub fn update(&mut self) {
+            self.context = self.context.update(IDLE_FRAMES);
+        }
+    }
+
+    impl RedHatBoyState<Running> {
+        pub fn frame_name(&self) -> &str {
+            RUN_FRAME_NAME
+        }
+        pub fn update(&mut self) {
+            self.context = self.context.update(RUNNING_FRAMES);
         }
     }
 }
